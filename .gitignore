@@ -1,9 +1,12 @@
-# Source materials (copyrighted; not redistributed)
-정보처리기사_기출문제/
+# Bundled study materials: keep the 24 PDFs under site/data/pdfs/ in the repo
+# so the static site can hyperlink directly to them. Exclude bulky companion
+# archives and the unused 시나공 corpus.
 시나공_정처기_기출/
-*.pdf
 *.zip
 *.docx
+# Ignore stray PDFs outside the served folder; keep site/data/pdfs/*
+*.pdf
+!site/data/pdfs/**/*.pdf
 
 # OS / editor
 .DS_Store

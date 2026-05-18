@@ -377,7 +377,7 @@ h3 {
 /* ───────── Choice grids (exam/subject picker) ───────── */
 .choice-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: var(--s-xs);
   margin-top: var(--s-md);
 }
@@ -397,6 +397,54 @@ h3 {
   font-size: 15px;
 }
 .choice .ch-meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+/* Variant: choice with separate PDF mini-buttons */
+.choice-with-pdfs {
+  display: flex;
+  align-items: stretch;
+  padding: 0;
+}
+.choice-with-pdfs:hover { border-color: var(--primary); background: var(--surface-soft); }
+.choice-with-pdfs .choice-body {
+  flex: 1;
+  padding: 12px var(--s-sm) 12px var(--s-md);
+  min-width: 0;
+}
+.choice-with-pdfs .choice-pdfs {
+  display: flex;
+  align-items: stretch;
+  border-left: 1px solid var(--hairline);
+}
+.pdf-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  padding: 0 6px;
+  font-size: 16px;
+  color: var(--muted);
+  text-decoration: none;
+  border-left: 1px solid var(--hairline);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.pdf-mini:first-child { border-left: none; }
+.pdf-mini:hover { background: var(--surface-card); color: var(--ink); }
+
+/* ───────── PDF source pills (used in quiz meta) ───────── */
+.pdf-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-card);
+  color: var(--ink);
+  border-radius: var(--r-pill);
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.pdf-pill:hover { background: var(--primary); color: var(--on-primary); }
 
 /* ───────── Quiz session ───────── */
 .quiz-bar {
@@ -540,14 +588,40 @@ h3 {
   font-family: var(--font-sans);
 }
 .explanation strong {
-  display: block;
-  margin-bottom: 8px;
+  display: inline-block;
   color: var(--accent-amber);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-family: var(--font-sans);
+}
+.explanation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-sm);
+  margin-bottom: 8px;
+}
+.explanation-source {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--on-dark-soft);
+  text-decoration: none;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.explanation-source:hover { color: var(--accent-amber); }
+.explanation.is-empty .explanation-source {
+  color: var(--muted);
+}
+.explanation.is-empty .explanation-source:hover { color: var(--primary); }
+.image-warning a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  margin-left: var(--s-xs);
 }
 .explanation.is-empty {
   background: var(--surface-card);
@@ -623,6 +697,73 @@ h3 {
   color: var(--body);
   font-size: 13px;
   text-align: right;
+}
+
+/* ───────── Booklets page (8 exam PDFs at a glance) ───────── */
+.booklet-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s-md);
+}
+.booklet-card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: var(--s-lg) var(--s-xl);
+}
+.booklet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-md);
+  flex-wrap: wrap;
+  margin-bottom: var(--s-md);
+}
+.booklet-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin: 0;
+}
+.booklet-sub {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+.booklet-files {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--s-xs);
+}
+.booklet-file {
+  display: flex;
+  align-items: center;
+  gap: var(--s-sm);
+  padding: 12px var(--s-md);
+  background: var(--surface-card);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.06s ease;
+}
+.booklet-file:hover { background: var(--surface-cream-strong); }
+.booklet-file:active { transform: translateY(1px); }
+.booklet-file .ico {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.booklet-file .bf-ttl {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.2;
+}
+.booklet-file .bf-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  line-height: 1.2;
 }
 
 /* ───────── Result screen — coral callout treatment ───────── */

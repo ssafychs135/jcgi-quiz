@@ -74,11 +74,17 @@ function route() {
   highlightNav(`/${base}`);
   if (!base) return renderHome();
   if (base === "practice") return renderPracticeMenu();
+  if (base === "booklets") return renderBooklets();
   if (base === "stats") return renderStats();
   if (base === "data") return renderDataPage();
   if (base === "quiz") return startQuiz(rest);
   if (base === "result") return renderResult();
   renderHome();
+}
+
+/** Look up an exam metadata record by display label (e.g., "2022년 2회"). */
+function examByLabel(label) {
+  return App.exams.find((e) => e.exam === label);
 }
 
 function highlightNav(path) {
@@ -131,6 +137,11 @@ function renderHome() {
         <div class="ttl">오답노트 다시 풀기</div>
         <div class="desc">${wrongs}개 문제</div>
       </a>
+      <a class="mode-card" href="#/booklets">
+        <div class="icon">📚</div>
+        <div class="ttl">원본 문제집</div>
+        <div class="desc">8회차 시험지·해설집 PDF 다운로드</div>
+      </a>
       <a class="mode-card" href="#/stats">
         <div class="icon">📊</div>
         <div class="ttl">진도·통계</div>
@@ -180,10 +191,16 @@ function renderPracticeMenu() {
   const wrongs = Object.keys(App.state.wrongs).length;
 
   const examCards = App.exams.map(e => tplStr`
-    <a class="choice" href="#/quiz/exam/${encodeURIComponent(e.exam)}">
-      <div class="ch-ttl">${e.exam}</div>
-      <div class="ch-meta">${e.date} · ${examCounts[e.exam] || 0}문제</div>
-    </a>`).join("");
+    <div class="choice choice-with-pdfs">
+      <a class="choice-body" href="#/quiz/exam/${encodeURIComponent(e.exam)}">
+        <div class="ch-ttl">${e.exam}</div>
+        <div class="ch-meta">${e.date} · ${examCounts[e.exam] || 0}문제</div>
+      </a>
+      <div class="choice-pdfs">
+        <a class="pdf-mini" href="${e.files.student}" target="_blank" rel="noopener" title="학생용 시험지">📄</a>
+        <a class="pdf-mini" href="${e.files.explanation}" target="_blank" rel="noopener" title="해설집">📖</a>
+      </div>
+    </div>`).join("");
 
   const subjCards = App.subjects.map(s => tplStr`
     <a class="choice" href="#/quiz/subject/${encodeURIComponent(s)}">
@@ -221,6 +238,53 @@ function countBy(fn) {
   const c = {};
   for (const q of App.questions) c[fn(q)] = (c[fn(q)] || 0) + 1;
   return c;
+}
+
+// ─── Booklets (문제집 원본 PDF 모음) ────────────────────────────────────────
+function renderBooklets() {
+  const examCounts = countBy(q => q.exam);
+  const cards = App.exams.map(e => tplStr`
+    <article class="booklet-card">
+      <div class="booklet-head">
+        <div>
+          <h3 class="booklet-title">${e.exam}</h3>
+          <div class="booklet-sub">${e.date} · 추출된 문제 ${examCounts[e.exam] || 0}개</div>
+        </div>
+        <a class="btn btn-primary" href="#/quiz/exam/${encodeURIComponent(e.exam)}">이 회차 풀기 →</a>
+      </div>
+      <div class="booklet-files">
+        <a class="booklet-file" href="${e.files.student}" target="_blank" rel="noopener">
+          <span class="ico">📄</span>
+          <div>
+            <div class="bf-ttl">학생용 시험지</div>
+            <div class="bf-sub">답 없음 · 실전 풀이용</div>
+          </div>
+        </a>
+        <a class="booklet-file" href="${e.files.teacher}" target="_blank" rel="noopener">
+          <span class="ico">📝</span>
+          <div>
+            <div class="bf-ttl">교사용 (정답 포함)</div>
+            <div class="bf-sub">정답이 ●로 표시됨</div>
+          </div>
+        </a>
+        <a class="booklet-file" href="${e.files.explanation}" target="_blank" rel="noopener">
+          <span class="ico">📖</span>
+          <div>
+            <div class="bf-ttl">해설집</div>
+            <div class="bf-sub">전 문항 해설 포함</div>
+          </div>
+        </a>
+      </div>
+    </article>`).join("");
+
+  render(app(), tpl`
+    <h2>원본 문제집 (시험지)</h2>
+    <p class="muted" style="margin-top:-8px; margin-bottom:32px; max-width:640px;">
+      추출된 ${App.questions.length}문제의 출처가 되는 8회차 기출 원본 PDF입니다.
+      그림·표·SQL이 포함된 문제는 텍스트만으로 풀기 어려우니, 막힐 때는 원본을 함께 보세요.
+    </p>
+    <div class="booklet-grid">${raw(cards)}</div>
+  `);
 }
 
 // ─── Quiz session ───────────────────────────────────────────────────────────
@@ -320,7 +384,14 @@ function renderQuiz() {
 
   const explHTML = showExpl ? renderExplanation(q) : "";
 
-  const imgWarning = q.needsImage ? tplStr`<div class="image-warning">⚠ 이 문제는 원본 시험지의 그림이나 표/SQL/코드를 참조합니다. 텍스트만으로 풀기 어려울 수 있어요.</div>` : "";
+  const examMeta = examByLabel(q.exam);
+  const studentHref = examMeta?.files?.student || "";
+  const explHref = examMeta?.files?.explanation || "";
+  const pdfLinksHTML = examMeta ? tplStr`
+    <a class="pdf-pill" href="${studentHref}" target="_blank" rel="noopener" title="${q.exam} 학생용 시험지 (원본 PDF)">📄 시험지</a>
+    <a class="pdf-pill" href="${explHref}" target="_blank" rel="noopener" title="${q.exam} 해설집 (원본 PDF)">📖 해설집</a>` : "";
+
+  const imgWarning = q.needsImage ? tplStr`<div class="image-warning">⚠ 이 문제는 원본 시험지의 그림이나 표/SQL/코드를 참조합니다. 텍스트만으로 풀기 어려울 수 있어요. <a href="${studentHref}" target="_blank" rel="noopener">📄 원본 시험지 열기</a></div>` : "";
   const imgTag = q.needsImage ? tplStr`<span class="tag tag-warning">⚠ 그림/표 참조</span>` : "";
 
   const rightAction = !showFeedback
@@ -341,6 +412,7 @@ function renderQuiz() {
           <span class="tag">${q.subject}</span>
           <span class="tag tag-primary">${q.exam} ${q.qNum}번</span>
           ${raw(imgTag)}
+          ${raw(pdfLinksHTML)}
         </div>
         <div class="progress"><span style="width:${progressPct}%"></span></div>
       </div>
@@ -384,10 +456,19 @@ function renderQuiz() {
 }
 
 function renderExplanation(q) {
+  const meta = examByLabel(q.exam);
+  const sourceLink = meta?.files?.explanation
+    ? tplStr`<a class="explanation-source" href="${meta.files.explanation}" target="_blank" rel="noopener">📖 해설집 원본 →</a>`
+    : "";
   if (!q.explanation || !q.explanation.trim()) {
-    return tplStr`<div class="explanation is-empty">해설이 제공되지 않은 문제입니다.</div>`;
+    return tplStr`<div class="explanation is-empty">
+      해설이 제공되지 않은 문제입니다. ${raw(sourceLink)}
+    </div>`;
   }
-  return tplStr`<div class="explanation"><strong>해설</strong><br/>${q.explanation}</div>`;
+  return tplStr`<div class="explanation">
+    <div class="explanation-header"><strong>해설</strong>${raw(sourceLink)}</div>
+    ${q.explanation}
+  </div>`;
 }
 
 function action(act) {

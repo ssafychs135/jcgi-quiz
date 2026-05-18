@@ -23,8 +23,10 @@ SOFTWARE.
 NOTE: The MIT license above applies to source code in this repository
 (`extract_questions.py`, files under `site/` excluding `site/data/`).
 The contents of `site/data/questions.json` (exam question text, options,
-explanations) originate from publicly distributed Korean engineer
-certification study materials (originally administered by HRD Korea / Q-Net,
-study-PDF compilation by comcbt.com). Their original copyrights remain with
-the respective owners; this repository republishes them for personal study
-purposes only.
+explanations) and the bundled exam PDFs under `site/data/pdfs/` originate
+from publicly distributed Korean engineer certification study materials
+(originally administered by HRD Korea / Q-Net, study-PDF compilation by
+comcbt.com). Their original copyrights remain with the respective owners;
+this repository republishes them for personal study purposes only and does
+not grant any further redistribution rights beyond those of the original
+materials.

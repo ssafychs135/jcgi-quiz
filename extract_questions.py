@@ -26,7 +26,11 @@ from pathlib import Path
 import pypdf
 
 BASE = Path(__file__).parent
-EXAM_ROOT = BASE / "정보처리기사_기출문제"
+SITE = BASE / "site"
+PDF_ROOT = SITE / "data" / "pdfs"
+# Relative prefix used in JSON so the static site can hyperlink directly to the
+# served PDFs (paths are relative to site/, where index.html lives).
+PDF_REL_PREFIX = "data/pdfs"
 
 EXAMS = [
     ("2020_1-2회통합_06-06", "20200606", "2020년 1·2회 통합", "2020-06-06"),
@@ -283,9 +287,9 @@ def needs_image(q_text: str, options: list[str]) -> bool:
 
 
 def parse_one_exam(folder: str, code: str, label: str, date: str) -> list[dict]:
-    teacher_pdf = EXAM_ROOT / folder / f"정보처리기사{code}(교사용).pdf"
-    student_pdf = EXAM_ROOT / folder / f"정보처리기사{code}(학생용).pdf"
-    expl_pdf    = EXAM_ROOT / folder / f"정보처리기사{code}(해설집).pdf"
+    teacher_pdf = PDF_ROOT / folder / f"정보처리기사{code}(교사용).pdf"
+    student_pdf = PDF_ROOT / folder / f"정보처리기사{code}(학생용).pdf"
+    expl_pdf    = PDF_ROOT / folder / f"정보처리기사{code}(해설집).pdf"
 
     student_text = extract_text(student_pdf)
     teacher_text = extract_text(teacher_pdf)
@@ -365,9 +369,23 @@ def main() -> None:
     img_flagged = sum(1 for q in all_questions if q["needsImage"])
     print(f"   · 이미지 의존 가능성 플래그: {img_flagged}")
 
+    exam_meta = []
+    for folder, code, label, date in EXAMS:
+        exam_meta.append({
+            "exam": label,
+            "date": date,
+            "code": code,
+            "folder": folder,
+            "files": {
+                "student":     f"{PDF_REL_PREFIX}/{folder}/정보처리기사{code}(학생용).pdf",
+                "teacher":     f"{PDF_REL_PREFIX}/{folder}/정보처리기사{code}(교사용).pdf",
+                "explanation": f"{PDF_REL_PREFIX}/{folder}/정보처리기사{code}(해설집).pdf",
+            },
+        })
+
     out = {
         "subjects": SUBJECTS,
-        "exams": [{"exam": label, "date": date} for _, _, label, date in EXAMS],
+        "exams": exam_meta,
         "perExam": [{"exam": e, "count": c} for e, c in per_exam],
         "totalQuestions": len(all_questions),
         "questions": all_questions,
