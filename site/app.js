@@ -48,7 +48,10 @@ async function boot() {
     App.questions = data.questions;
     App.subjects = data.subjects;
     App.exams = data.exams;
-    document.getElementById("footer-total").textContent = data.totalQuestions;
+    const officialN = data.exams.filter(e => e.source !== "sinagong-restored").length;
+    const restoredN = data.exams.filter(e => e.source === "sinagong-restored").length;
+    document.getElementById("footer-summary").textContent =
+      `${data.exams.length}회차 (공식 ${officialN} + 복원본 ${restoredN}) · ${data.totalQuestions}문제`;
   } catch (e) {
     render(app(), tpl`
       <div class="card">
@@ -112,7 +115,7 @@ function renderHome() {
   render(app(), tpl`
     <section class="hero">
       <h1>정보처리기사 필기 기출 문제풀이</h1>
-      <p>2020년 1·2회부터 2022년 2회까지, 8개 회차에서 추출한 ${total}문제</p>
+      <p>2020년 1·2회부터 2025년 3회까지, ${App.exams.length}개 회차에서 추출한 ${total}문제 (공식 + 복원본 통합)</p>
       <div class="hero-stats">
         <div class="hero-stat"><div class="num">${answered}</div><div class="lbl">풀어본 문제</div></div>
         <div class="hero-stat"><div class="num">${accuracy}%</div><div class="lbl">정답률</div></div>
@@ -140,7 +143,7 @@ function renderHome() {
       <a class="mode-card" href="#/booklets">
         <div class="icon">📚</div>
         <div class="ttl">원본 문제집</div>
-        <div class="desc">8회차 시험지·해설집 PDF 다운로드</div>
+        <div class="desc">${App.exams.length}회차 시험지·해설 PDF</div>
       </a>
       <a class="mode-card" href="#/stats">
         <div class="icon">📊</div>
@@ -190,17 +193,26 @@ function renderPracticeMenu() {
   const bookmarks = Object.keys(App.state.bookmarks).length;
   const wrongs = Object.keys(App.state.wrongs).length;
 
-  const examCards = App.exams.map(e => tplStr`
-    <div class="choice choice-with-pdfs">
-      <a class="choice-body" href="#/quiz/exam/${encodeURIComponent(e.exam)}">
-        <div class="ch-ttl">${e.exam}</div>
-        <div class="ch-meta">${e.date} · ${examCounts[e.exam] || 0}문제</div>
-      </a>
-      <div class="choice-pdfs">
-        <a class="pdf-mini" href="${e.files.student}" target="_blank" rel="noopener" title="학생용 시험지">📄</a>
-        <a class="pdf-mini" href="${e.files.explanation}" target="_blank" rel="noopener" title="해설집">📖</a>
-      </div>
-    </div>`).join("");
+  const renderExamCard = (e) => {
+    const isRestored = e.source === "sinagong-restored";
+    const pdfButtons = isRestored
+      ? tplStr`<a class="pdf-mini" href="${e.files.student}" target="_blank" rel="noopener" title="시험지 (복원본)">📄</a>`
+      : tplStr`<a class="pdf-mini" href="${e.files.student}" target="_blank" rel="noopener" title="학생용 시험지">📄</a>
+               <a class="pdf-mini" href="${e.files.explanation}" target="_blank" rel="noopener" title="해설집">📖</a>`;
+    return tplStr`
+      <div class="choice choice-with-pdfs">
+        <a class="choice-body" href="#/quiz/exam/${encodeURIComponent(e.exam)}">
+          <div class="ch-ttl">${e.exam}</div>
+          <div class="ch-meta">${e.date} · ${examCounts[e.exam] || 0}문제</div>
+        </a>
+        <div class="choice-pdfs">${raw(pdfButtons)}</div>
+      </div>`;
+  };
+
+  const officialExams = App.exams.filter(e => e.source !== "sinagong-restored");
+  const restoredExams = App.exams.filter(e => e.source === "sinagong-restored");
+  const officialCards = officialExams.map(renderExamCard).join("");
+  const restoredCards = restoredExams.map(renderExamCard).join("");
 
   const subjCards = App.subjects.map(s => tplStr`
     <a class="choice" href="#/quiz/subject/${encodeURIComponent(s)}">
@@ -219,8 +231,11 @@ function renderPracticeMenu() {
       <a class="btn btn-primary" href="#/quiz/random/100">실전 100문제</a>
     </div>
 
-    <div class="section-title">회차별 (한 회 100문제)</div>
-    <div class="choice-grid">${raw(examCards)}</div>
+    <div class="section-title">회차별 — 공식 (8회차)</div>
+    <div class="choice-grid">${raw(officialCards)}</div>
+
+    <div class="section-title">회차별 — 복원본 (9회차) <span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:11px;color:var(--muted-soft);"> · 2023~2025년, 정답이 부정확할 수 있어요</span></div>
+    <div class="choice-grid">${raw(restoredCards)}</div>
 
     <div class="section-title">과목별</div>
     <div class="choice-grid">${raw(subjCards)}</div>
@@ -241,49 +256,83 @@ function countBy(fn) {
 }
 
 // ─── Booklets (문제집 원본 PDF 모음) ────────────────────────────────────────
-function renderBooklets() {
-  const examCounts = countBy(q => q.exam);
-  const cards = App.exams.map(e => tplStr`
+function bookletCard(e, examCounts) {
+  const isRestored = e.source === "sinagong-restored";
+  const filesHTML = isRestored
+    ? tplStr`<a class="booklet-file" href="${e.files.student}" target="_blank" rel="noopener">
+        <span class="ico">📄</span>
+        <div>
+          <div class="bf-ttl">시험지 (복원본)</div>
+          <div class="bf-sub">정답표 포함 · 해설 없음</div>
+        </div>
+      </a>`
+    : tplStr`<a class="booklet-file" href="${e.files.student}" target="_blank" rel="noopener">
+        <span class="ico">📄</span>
+        <div>
+          <div class="bf-ttl">학생용 시험지</div>
+          <div class="bf-sub">답 없음 · 실전 풀이용</div>
+        </div>
+      </a>
+      <a class="booklet-file" href="${e.files.teacher}" target="_blank" rel="noopener">
+        <span class="ico">📝</span>
+        <div>
+          <div class="bf-ttl">교사용 (정답 포함)</div>
+          <div class="bf-sub">정답이 ●로 표시됨</div>
+        </div>
+      </a>
+      <a class="booklet-file" href="${e.files.explanation}" target="_blank" rel="noopener">
+        <span class="ico">📖</span>
+        <div>
+          <div class="bf-ttl">해설집</div>
+          <div class="bf-sub">전 문항 해설 포함</div>
+        </div>
+      </a>`;
+  const badge = isRestored
+    ? tplStr`<span class="tag tag-warning" style="margin-left:8px;vertical-align:middle;">📋 복원본</span>`
+    : "";
+  return tplStr`
     <article class="booklet-card">
       <div class="booklet-head">
         <div>
-          <h3 class="booklet-title">${e.exam}</h3>
+          <h3 class="booklet-title">${e.exam}${raw(badge)}</h3>
           <div class="booklet-sub">${e.date} · 추출된 문제 ${examCounts[e.exam] || 0}개</div>
         </div>
         <a class="btn btn-primary" href="#/quiz/exam/${encodeURIComponent(e.exam)}">이 회차 풀기 →</a>
       </div>
-      <div class="booklet-files">
-        <a class="booklet-file" href="${e.files.student}" target="_blank" rel="noopener">
-          <span class="ico">📄</span>
-          <div>
-            <div class="bf-ttl">학생용 시험지</div>
-            <div class="bf-sub">답 없음 · 실전 풀이용</div>
-          </div>
-        </a>
-        <a class="booklet-file" href="${e.files.teacher}" target="_blank" rel="noopener">
-          <span class="ico">📝</span>
-          <div>
-            <div class="bf-ttl">교사용 (정답 포함)</div>
-            <div class="bf-sub">정답이 ●로 표시됨</div>
-          </div>
-        </a>
-        <a class="booklet-file" href="${e.files.explanation}" target="_blank" rel="noopener">
-          <span class="ico">📖</span>
-          <div>
-            <div class="bf-ttl">해설집</div>
-            <div class="bf-sub">전 문항 해설 포함</div>
-          </div>
-        </a>
-      </div>
-    </article>`).join("");
+      <div class="booklet-files">${raw(filesHTML)}</div>
+    </article>`;
+}
+
+function renderBooklets() {
+  const examCounts = countBy(q => q.exam);
+  const official = App.exams.filter(e => e.source !== "sinagong-restored");
+  const restored = App.exams.filter(e => e.source === "sinagong-restored");
+  const totalOfficial = official.reduce((n, e) => n + (examCounts[e.exam] || 0), 0);
+  const totalRestored = restored.reduce((n, e) => n + (examCounts[e.exam] || 0), 0);
+
+  const officialCards = official.map(e => bookletCard(e, examCounts)).join("");
+  const restoredCards = restored.map(e => bookletCard(e, examCounts)).join("");
 
   render(app(), tpl`
     <h2>원본 문제집 (시험지)</h2>
-    <p class="muted" style="margin-top:-8px; margin-bottom:32px; max-width:640px;">
-      추출된 ${App.questions.length}문제의 출처가 되는 8회차 기출 원본 PDF입니다.
+    <p class="muted" style="margin-top:-8px; margin-bottom:32px; max-width:680px;">
+      추출된 ${App.questions.length}문제의 출처가 되는 ${App.exams.length}회차 기출 원본 PDF입니다.
       그림·표·SQL이 포함된 문제는 텍스트만으로 풀기 어려우니, 막힐 때는 원본을 함께 보세요.
     </p>
-    <div class="booklet-grid">${raw(cards)}</div>
+
+    <div class="section-title">공식 기출 (${totalOfficial}문제 · ${official.length}회차)</div>
+    <p class="muted small" style="margin:-8px 0 16px; max-width:680px;">
+      comcbt.com이 정리한 공식 기출 패키지(학생용·교사용·해설집 3종). 정답·해설 검증됨.
+    </p>
+    <div class="booklet-grid">${raw(officialCards)}</div>
+
+    <div class="section-title">복원본 (${totalRestored}문제 · ${restored.length}회차)</div>
+    <p class="muted small" style="margin:-8px 0 16px; max-width:680px;">
+      2022년 3회부터 정보처리기사 필기는 CBT(상시시험)로 전환되어 공식 기출이 공개되지 않습니다.
+      여기 자료는 응시자 증언을 바탕으로 시중에 정리된 <strong>복원본</strong>이라,
+      문제 본문이나 정답이 실제와 일부 다를 수 있어요.
+    </p>
+    <div class="booklet-grid">${raw(restoredCards)}</div>
   `);
 }
 
@@ -387,9 +436,17 @@ function renderQuiz() {
   const examMeta = examByLabel(q.exam);
   const studentHref = examMeta?.files?.student || "";
   const explHref = examMeta?.files?.explanation || "";
-  const pdfLinksHTML = examMeta ? tplStr`
-    <a class="pdf-pill" href="${studentHref}" target="_blank" rel="noopener" title="${q.exam} 학생용 시험지 (원본 PDF)">📄 시험지</a>
-    <a class="pdf-pill" href="${explHref}" target="_blank" rel="noopener" title="${q.exam} 해설집 (원본 PDF)">📖 해설집</a>` : "";
+  const isRestored = q.source === "sinagong-restored";
+
+  // For restored sets there's only a single combined PDF, so just one "시험지" pill
+  const pdfLinksHTML = !examMeta ? "" : (isRestored
+    ? tplStr`<a class="pdf-pill" href="${studentHref}" target="_blank" rel="noopener" title="${q.exam} 시험지 (복원본 PDF)">📄 시험지</a>`
+    : tplStr`<a class="pdf-pill" href="${studentHref}" target="_blank" rel="noopener" title="${q.exam} 학생용 시험지 (원본 PDF)">📄 시험지</a>
+             <a class="pdf-pill" href="${explHref}" target="_blank" rel="noopener" title="${q.exam} 해설집 (원본 PDF)">📖 해설집</a>`);
+
+  const restoredBadge = isRestored
+    ? tplStr`<span class="tag tag-warning" title="2022년 3회 이후는 시험이 공개되지 않아 시중 복원본을 사용했습니다. 정답이 부정확할 수 있어요.">📋 복원본</span>`
+    : "";
 
   const imgWarning = q.needsImage ? tplStr`<div class="image-warning">⚠ 이 문제는 원본 시험지의 그림이나 표/SQL/코드를 참조합니다. 텍스트만으로 풀기 어려울 수 있어요. <a href="${studentHref}" target="_blank" rel="noopener">📄 원본 시험지 열기</a></div>` : "";
   const imgTag = q.needsImage ? tplStr`<span class="tag tag-warning">⚠ 그림/표 참조</span>` : "";
@@ -411,6 +468,7 @@ function renderQuiz() {
           <span>·</span>
           <span class="tag">${q.subject}</span>
           <span class="tag tag-primary">${q.exam} ${q.qNum}번</span>
+          ${raw(restoredBadge)}
           ${raw(imgTag)}
           ${raw(pdfLinksHTML)}
         </div>
@@ -461,8 +519,11 @@ function renderExplanation(q) {
     ? tplStr`<a class="explanation-source" href="${meta.files.explanation}" target="_blank" rel="noopener">📖 해설집 원본 →</a>`
     : "";
   if (!q.explanation || !q.explanation.trim()) {
+    const note = q.source === "sinagong-restored"
+      ? "복원본 회차에는 해설이 제공되지 않습니다."
+      : "해설이 제공되지 않은 문제입니다.";
     return tplStr`<div class="explanation is-empty">
-      해설이 제공되지 않은 문제입니다. ${raw(sourceLink)}
+      ${note} ${raw(sourceLink)}
     </div>`;
   }
   return tplStr`<div class="explanation">
