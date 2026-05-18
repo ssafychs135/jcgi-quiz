@@ -1,0 +1,30 @@
+# Source materials (copyrighted; not redistributed)
+정보처리기사_기출문제/
+시나공_정처기_기출/
+*.pdf
+*.zip
+*.docx
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node / build tools (not used here but defensive)
+node_modules/
+
+# Local server logs
+*.log
+
+# Override global .gitignore_global: the Django/Python template ignores /site,
+# but this project's static frontend lives there.
+!site/
+!site/**
